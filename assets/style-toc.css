@@ -17,6 +17,27 @@ body {
     margin: 0 auto;
 }
 
+.toc-links {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+}
+
+.home-link {
+    color: #fff;
+    text-decoration: none;
+    padding: 8px 14px;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    transition: all 0.3s ease;
+}
+
+.home-link:hover {
+    background: rgba(255,255,255,0.12);
+    border-color: rgba(255,255,255,0.35);
+}
+
 h1 {
     text-align: center;
     margin-bottom: 40px;

@@ -61,21 +61,28 @@ def get_pages(chapter_path: str) -> List[str]:
     return [img.name for img in sorted(set(images))]
 
 
-def generate_toc_html(chapters: List[Tuple[str, str, str]], output_dir: str) -> str:
+def generate_toc_html(
+    chapters: List[Tuple[str, str, str]],
+    output_dir: str,
+    story_name: str
+) -> str:
     """Generate Table of Contents HTML."""
     html = '''<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Table of Contents</title>
+    <title>{story_name}</title>
     <link rel="stylesheet" href="assets/style-toc.css">
 </head>
 <body>
     <div class="container">
-        <h1>Manga Reader</h1>
+        <div class="toc-links">
+            <a href="/" class="home-link">Home</a>
+        </div>
+        <h1>{story_name}</h1>
         <div class="chapters-grid">
-'''
+'''.format(story_name=story_name)
     
     for folder_name, display_name, _ in chapters:
         chapter_file = f"chapter_{folder_name}.html"
@@ -248,6 +255,8 @@ def generate_all_html(base_path: str, output_dir: Optional[str] = None) -> None:
     
     print(f"✅ Found {len(chapters)} chapters\n")
     
+    story_name = os.path.basename(base_path)
+    
     # Copy assets first
     print("📦 Copying assets...")
     copy_assets(output_dir)
@@ -255,7 +264,7 @@ def generate_all_html(base_path: str, output_dir: Optional[str] = None) -> None:
     
     # Generate TOC
     print("📖 Generating Table of Contents...")
-    toc_html = generate_toc_html(chapters, output_dir)
+    toc_html = generate_toc_html(chapters, output_dir, story_name)
     toc_path = os.path.join(output_dir, 'index.html')
     with open(toc_path, 'w', encoding='utf-8') as f:
         f.write(toc_html)
@@ -263,7 +272,6 @@ def generate_all_html(base_path: str, output_dir: Optional[str] = None) -> None:
     
     # Generate chapter pages
     print("📄 Generating chapter pages...")
-    story_name = os.path.basename(base_path)
     for idx, (folder_name, display_name, chapter_path) in enumerate(chapters):
         pages = get_pages(chapter_path)
         
