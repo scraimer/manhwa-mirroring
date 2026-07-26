@@ -61,6 +61,11 @@ def get_pages(chapter_path: str) -> List[str]:
     return [img.name for img in sorted(set(images))]
 
 
+def chapter_anchor_id(folder_name: str) -> str:
+    anchor = re.sub(r'[^A-Za-z0-9_-]+', '-', folder_name).strip('-')
+    return anchor or 'chapter'
+
+
 def generate_toc_html(
     chapters: List[Tuple[str, str, str]],
     output_dir: str,
@@ -85,8 +90,9 @@ def generate_toc_html(
 '''.format(story_name=story_name)
     
     for folder_name, display_name, _ in chapters:
+        anchor_id = chapter_anchor_id(folder_name)
         chapter_file = f"chapter_{folder_name}.html"
-        html += f'''            <a href="{chapter_file}" class="chapter-link">
+        html += f'''            <a href="{chapter_file}" class="chapter-link" id="{anchor_id}">
                 <h3>{display_name}</h3>
             </a>
 '''
@@ -125,7 +131,8 @@ def generate_chapter_html(
     # Build navigation buttons
     prev_btn = f'<a href="chapter_{prev_chapter}.html" class="nav-btn">← PREV</a>' if prev_chapter else '<button class="nav-btn" disabled>← PREV</button>'
     next_btn = f'<a href="chapter_{next_chapter}.html" class="nav-btn">NEXT →</a>' if next_chapter else '<button class="nav-btn" disabled>NEXT →</button>'
-    toc_btn = '<a href="index.html" class="nav-btn toc-btn">📖 TOC</a>'
+    toc_anchor = chapter_anchor_id(chapter_folder)
+    toc_btn = f'<a href="index.html#{toc_anchor}" class="nav-btn toc-btn">📖 TOC</a>'
     
     # Extract chapter number from display name for title
     chapter_num = chapter_display.split('_')[0]
