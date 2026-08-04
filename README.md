@@ -45,7 +45,6 @@ to add a link to the newly created folder, so it's easy to find.
 
 ## Wishlist:
 
-* DONE: https://comix.to/title/6lxg-not-your-typical-reincarnation-story
-* Add a "Go Home" to go back to the "/" and the list of all downloaded stories
-* DONE: Make /index.html a dark-mode page
+* Mark end of chapter while reading
+* Mark chapter as duplicate and decide which one stays
 
