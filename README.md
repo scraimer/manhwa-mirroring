@@ -6,7 +6,7 @@
 SRC_URL="https://comix.to/title/3nyv-for-my-derelict-favorite"
 NAME="For My Derelict Favorite"
 
-cd /home/shalom/workspace/download-manwha/derelict-favorite/v3/comix-downloader
+cd /home/shalom/workspace/manhwa/download/v3/comix-downloader
 source venv/bin/activate
 python main.py download "$SRC_URL" -c "1-10"
 ```
@@ -14,7 +14,7 @@ python main.py download "$SRC_URL" -c "1-10"
 ## Step 2: Check for missing
 
 ```shell
-python3 /home/shalom/workspace/download-manwha/generate-manhwa-html/check_missing_chapters.py "downloads/$NAME"
+python3 /home/shalom/workspace/manhwa/manhwa-mirroring/generate/check_missing_chapters.py "downloads/$NAME"
 ```
 
 If any are missing, go back to step 1 to retry
@@ -34,7 +34,7 @@ popd
 ```shell
 DEST="/home/shalom/Dropbox/backups/quests, hobbies and entertainment/manhwa"
 mv "downloads/$NAME" "${DEST}"
-python3 /home/shalom/workspace/download-manwha/generate-manhwa-html/generate_manhwa_html.py "$DEST/$NAME"
+python3 /home/shalom/workspace/manhwa/manhwa-mirroring/generate/generate_manhwa_html.py "$DEST/$NAME"
 ```
 
 ## Step 4: Edit index.html to add link
