@@ -61,6 +61,12 @@ body {
     border-color: #777;
 }
 
+.nav-btn.is-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .nav-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -72,6 +78,36 @@ body {
 
 .toc-btn:hover {
     background: #2d7fa6;
+}
+
+.edit-mode-btn {
+    background: #5b3b8a;
+}
+
+.edit-mode-btn:hover {
+    background: #7a4fc2;
+}
+
+.hide-chapter-btn {
+    background: #8a3b3b;
+}
+
+.hide-chapter-btn:hover {
+    background: #b24d4d;
+}
+
+.edit-only {
+    display: none;
+}
+
+.edit-mode .edit-only {
+    display: inline-flex;
+}
+
+.current-chapter-hidden .chapter-title::after {
+    content: " (hidden)";
+    color: #f59e0b;
+    font-size: 0.8em;
 }
 
 .page-counter {

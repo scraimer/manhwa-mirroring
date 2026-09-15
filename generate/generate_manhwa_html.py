@@ -66,6 +66,18 @@ def chapter_anchor_id(folder_name: str) -> str:
     return anchor or 'chapter'
 
 
+def build_chapter_payload(chapters: List[Tuple[str, str, str]]) -> str:
+    return json.dumps([
+        {
+            "folder": folder_name,
+            "display": display_name,
+            "anchor": chapter_anchor_id(folder_name),
+            "file": f"chapter_{folder_name}.html",
+        }
+        for folder_name, display_name, _ in chapters
+    ])
+
+
 def generate_toc_html(
     chapters: List[Tuple[str, str, str]],
     output_dir: str,
@@ -92,13 +104,20 @@ def generate_toc_html(
     for folder_name, display_name, _ in chapters:
         anchor_id = chapter_anchor_id(folder_name)
         chapter_file = f"chapter_{folder_name}.html"
-        html += f'''            <a href="{chapter_file}" class="chapter-link" id="{anchor_id}">
+        html += f'''            <a href="{chapter_file}" class="chapter-link" id="{anchor_id}" data-chapter="{folder_name}">
                 <h3>{display_name}</h3>
+                <span class="hidden-badge" aria-hidden="true">Hidden</span>
             </a>
 '''
     
-    html += '''        </div>
+    chapter_payload = build_chapter_payload(chapters)
+    html += f'''        </div>
     </div>
+    <script>
+        window.CHAPTERS = {chapter_payload};
+        window.HIDE_CHAPTER_ENDPOINT = "/cgi-bin/hide_chapter.py";
+    </script>
+    <script src="assets/script-toc.js"></script>
 </body>
 </html>'''
     
@@ -117,22 +136,26 @@ def generate_chapter_html(
     """Generate chapter page HTML with vertical scrolling."""
     
     # Calculate previous and next chapter
-    prev_chapter = None
-    next_chapter = None
-    next_chapter_file = None
-    
-    if chapter_index > 0:
-        prev_chapter = chapters[chapter_index - 1][0]
-    
-    if chapter_index < total_chapters - 1:
-        next_chapter = chapters[chapter_index + 1][0]
-        next_chapter_file = f"chapter_{next_chapter}.html"
+    prev_chapter = chapters[chapter_index - 1][0] if chapter_index > 0 else None
+    next_chapter = chapters[chapter_index + 1][0] if chapter_index < total_chapters - 1 else None
+    prev_chapter_file = f"chapter_{prev_chapter}.html" if prev_chapter else None
+    next_chapter_file = f"chapter_{next_chapter}.html" if next_chapter else None
     
     # Build navigation buttons
-    prev_btn = f'<a href="chapter_{prev_chapter}.html" class="nav-btn">← PREV</a>' if prev_chapter else '<button class="nav-btn" disabled>← PREV</button>'
-    next_btn = f'<a href="chapter_{next_chapter}.html" class="nav-btn">NEXT →</a>' if next_chapter else '<button class="nav-btn" disabled>NEXT →</button>'
+    prev_btn = (
+        f'<a href="{prev_chapter_file}" class="nav-btn js-nav-link" data-nav="prev" data-fallback-href="{prev_chapter_file}">← PREV</a>'
+        if prev_chapter_file else
+        '<button class="nav-btn" data-nav="prev" disabled>← PREV</button>'
+    )
+    next_btn = (
+        f'<a href="{next_chapter_file}" class="nav-btn js-nav-link" data-nav="next" data-fallback-href="{next_chapter_file}">NEXT →</a>'
+        if next_chapter_file else
+        '<button class="nav-btn" data-nav="next" disabled>NEXT →</button>'
+    )
     toc_anchor = chapter_anchor_id(chapter_folder)
     toc_btn = f'<a href="index.html#{toc_anchor}" class="nav-btn toc-btn">📖 TOC</a>'
+    edit_btn = '<button class="nav-btn edit-mode-btn" type="button" data-action="edit-mode-toggle">Edit Mode</button>'
+    hide_btn = '<button class="nav-btn edit-only hide-chapter-btn" type="button" data-action="hide-chapter-toggle">Hide Chapter</button>'
     
     # Extract chapter number from display name for title
     chapter_num = chapter_display.split('_')[0]
@@ -165,6 +188,8 @@ def generate_chapter_html(
     
     page_count = len(pages)
     next_chapter_file_json = json.dumps(next_chapter_file) if next_chapter_file else "null"
+    prev_chapter_file_json = json.dumps(prev_chapter_file) if prev_chapter_file else "null"
+    chapter_payload = build_chapter_payload(chapters)
     
     html = f'''<!DOCTYPE html>
 <html lang="en">
@@ -193,6 +218,8 @@ def generate_chapter_html(
             {prev_btn}
             {next_btn}
             {toc_btn}
+            {edit_btn}
+            {hide_btn}
         </div>
         <div class="page-counter"><span id="current-page">1</span>/{page_count}</div>
     </div>
@@ -204,11 +231,17 @@ def generate_chapter_html(
         {prev_btn}
         {next_btn}
         {toc_btn}
+        {edit_btn}
+        {hide_btn}
     </div>
     
     <script>
         window.PAGE_COUNT = {page_count};
+        window.CHAPTERS = {chapter_payload};
+        window.CURRENT_CHAPTER = {json.dumps(chapter_folder)};
+        window.PREV_CHAPTER_FILE = {prev_chapter_file_json};
         window.NEXT_CHAPTER_FILE = {next_chapter_file_json};
+        window.HIDE_CHAPTER_ENDPOINT = "/cgi-bin/hide_chapter.py";
     </script>
     <script src="assets/script-chapter.js"></script>
 </body>

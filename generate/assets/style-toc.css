@@ -65,6 +65,11 @@ h1 {
     scroll-margin-top: 20px;
 }
 
+.chapter-link.is-hidden {
+    border-color: rgba(245, 158, 11, 0.5);
+    background: rgba(245, 158, 11, 0.08);
+}
+
 .chapter-link:hover {
     background: rgba(255,255,255,0.1);
     border-color: rgba(255,255,255,0.3);
@@ -75,6 +80,24 @@ h1 {
 .chapter-link h3 {
     font-size: 1.1em;
     margin-bottom: 5px;
+}
+
+.hidden-badge {
+    display: none;
+    margin-top: 8px;
+    padding: 4px 10px;
+    width: fit-content;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    color: #fbbf24;
+    font-size: 0.75em;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.chapter-link.is-hidden .hidden-badge {
+    display: inline-flex;
 }
 
 .chapter-link p {

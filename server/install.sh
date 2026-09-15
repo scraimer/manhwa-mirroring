@@ -8,7 +8,8 @@ IMAGE_NAME=${IMAGE_NAME:-manhwa-lighttpd}
 CONTAINER_NAME=${CONTAINER_NAME:-manhwa-lighttpd}
 SERVICE_NAME=${SERVICE_NAME:-manhwa-lighttpd}
 HTTP_PORT=${HTTP_PORT:-24083}
-DB_PATH=${BASE_DIR}/var/lib/manhwa/state.sqlite3
+# Must match DB_PATH in last_page.py / hide_chapter.py (the path *inside* the container).
+CONTAINER_DB_PATH=/var/lib/manhwa/state.sqlite3
 HOST_DB_PATH=${HOST_DB_PATH:-/var/lib/manhwa/state.sqlite3}
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -18,7 +19,8 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 install -d -o shalom -g shalom -m 0755 "$APP_DIR"
-install -d -m 0755 /var/lib/manhwa
+install -d -m 0755 "$(dirname "$HOST_DB_PATH")"
+touch "$HOST_DB_PATH"
 install -d -m 0755 "$DOCROOT_HOST_PATH"
 
 install -o shalom -g shalom -m 0644 "$SCRIPT_DIR/Dockerfile" "$APP_DIR/Dockerfile"
@@ -49,7 +51,7 @@ ExecStart=/usr/bin/docker run --rm --name "$CONTAINER_NAME" \
   --cpus=1 \
   -p ${HTTP_PORT}:80 \
   -v "$DOCROOT_HOST_PATH":/srv/www:ro \
-  -v "$HOST_DB_PATH":"$DB_PATH" \
+  -v "$HOST_DB_PATH":"$CONTAINER_DB_PATH" \
   "$IMAGE_NAME"
 ExecStop=-/usr/bin/docker stop "$CONTAINER_NAME"
 

@@ -2,18 +2,26 @@ const container = document.getElementById('container');
 const progressBar = document.getElementById('progress');
 const currentPageSpan = document.getElementById('current-page');
 const topNav = document.querySelector('.top-nav');
+const bottomNav = document.querySelector('.bottom-nav');
 const images = document.querySelectorAll('.manga-page');
 const pageCount = window.PAGE_COUNT || 0;
-const nextChapterFile = window.NEXT_CHAPTER_FILE || null;
+const chapterOrder = Array.isArray(window.CHAPTERS) ? window.CHAPTERS : [];
+const currentChapter = window.CURRENT_CHAPTER || null;
+const hideChapterEndpoint = window.HIDE_CHAPTER_ENDPOINT || '/cgi-bin/hide_chapter.py';
 const swipeIndicator = document.getElementById('swipeIndicator');
 const swipeProgressLine = document.getElementById('swipeProgressLine');
 const verticalSwipeIndicator = document.getElementById('verticalSwipeIndicator');
 const verticalSwipeProgressLine = document.getElementById('verticalSwipeProgressLine');
+const navLinks = Array.from(document.querySelectorAll('[data-nav]'));
+const editModeButtons = Array.from(document.querySelectorAll('[data-action="edit-mode-toggle"]'));
+const hideChapterButtons = Array.from(document.querySelectorAll('[data-action="hide-chapter-toggle"]'));
 
 let lastScrollY = 0;
 let lastNavToggleScrollY = 0;
 let imagesLoaded = false;
 let isAtBottomOfPage = false;
+let hiddenChapters = new Set();
+let editModeEnabled = false;
 
 // Touch gesture tracking
 let touchStartX = 0;
@@ -23,8 +31,167 @@ let touchEndY = 0;
 let isHorizontalSwiping = false;
 let isVerticalSwiping = false;
 
-function getChunkImages(chunkNumber) {
-    return Array.from(images).filter((img) => Number(img.dataset.chunk) === chunkNumber);
+function getChapterIndex(chapterFolder) {
+    return chapterOrder.findIndex((chapter) => chapter.folder === chapterFolder);
+}
+
+function getVisibleNeighbor(chapterFolder, direction) {
+    const currentIndex = getChapterIndex(chapterFolder);
+    if (currentIndex === -1) {
+        return null;
+    }
+
+    const step = direction === 'prev' ? -1 : 1;
+    for (let index = currentIndex + step; index >= 0 && index < chapterOrder.length; index += step) {
+        const chapter = chapterOrder[index];
+        if (!hiddenChapters.has(chapter.folder)) {
+            return chapter;
+        }
+    }
+
+    return null;
+}
+
+function getCurrentHiddenState() {
+    return currentChapter ? hiddenChapters.has(currentChapter) : false;
+}
+
+function setNavElementState(element, target) {
+    if (!element) {
+        return;
+    }
+
+    if (target) {
+        if (element.tagName === 'A') {
+            element.href = target.file;
+        }
+        element.setAttribute('aria-disabled', 'false');
+        element.classList.remove('is-disabled');
+        if ('disabled' in element) {
+            element.disabled = false;
+        }
+    } else {
+        if (element.tagName === 'A') {
+            element.setAttribute('href', '#');
+        }
+        element.setAttribute('aria-disabled', 'true');
+        element.classList.add('is-disabled');
+        if ('disabled' in element) {
+            element.disabled = true;
+        }
+    }
+}
+
+function updateNavigationLinks() {
+    const prevTarget = currentChapter ? getVisibleNeighbor(currentChapter, 'prev') : null;
+    const nextTarget = currentChapter ? getVisibleNeighbor(currentChapter, 'next') : null;
+
+    navLinks.forEach((element) => {
+        if (element.dataset.nav === 'prev') {
+            setNavElementState(element, prevTarget);
+            if (prevTarget && element.dataset.fallbackHref) {
+                element.href = prevTarget.file;
+            }
+        } else if (element.dataset.nav === 'next') {
+            setNavElementState(element, nextTarget);
+            if (nextTarget && element.dataset.fallbackHref) {
+                element.href = nextTarget.file;
+            }
+        }
+    });
+}
+
+function updateEditModeUi() {
+    document.body.classList.toggle('edit-mode', editModeEnabled);
+    if (topNav) {
+        topNav.classList.toggle('edit-mode', editModeEnabled);
+    }
+    if (bottomNav) {
+        bottomNav.classList.toggle('edit-mode', editModeEnabled);
+    }
+
+    editModeButtons.forEach((button) => {
+        button.textContent = editModeEnabled ? 'Exit Edit Mode' : 'Edit Mode';
+    });
+
+    hideChapterButtons.forEach((button) => {
+        button.style.display = editModeEnabled ? 'inline-flex' : '';
+    });
+}
+
+function updateHideChapterButtons() {
+    const isHidden = getCurrentHiddenState();
+    hideChapterButtons.forEach((button) => {
+        button.textContent = isHidden ? 'Unhide Chapter' : 'Hide Chapter';
+    });
+
+    document.body.classList.toggle('current-chapter-hidden', isHidden);
+}
+
+function refreshAllState() {
+    updateNavigationLinks();
+    updateEditModeUi();
+    updateHideChapterButtons();
+}
+
+function getChapterEndpointForm(hidden) {
+    const form = new URLSearchParams();
+    form.set('chapter', currentChapter || '');
+    form.set('hidden', hidden ? '1' : '0');
+    return form;
+}
+
+async function loadHiddenChapters() {
+    try {
+        const response = await fetch(hideChapterEndpoint, { cache: 'no-store' });
+        if (!response.ok) {
+            throw new Error(`Failed to load hidden chapters: ${response.status}`);
+        }
+
+        const data = await response.json();
+        hiddenChapters = new Set(
+            (data.hidden || [])
+                .map((item) => item.chapter)
+                .filter(Boolean),
+        );
+    } catch (error) {
+        console.error(error);
+        hiddenChapters = new Set();
+    } finally {
+        refreshAllState();
+    }
+}
+
+async function toggleCurrentChapterHidden() {
+    if (!currentChapter) {
+        return;
+    }
+
+    const nextHiddenState = !getCurrentHiddenState();
+    const response = await fetch(hideChapterEndpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        },
+        body: getChapterEndpointForm(nextHiddenState).toString(),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to update hidden state: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.ok) {
+        throw new Error('Failed to update hidden state');
+    }
+
+    if (nextHiddenState) {
+        hiddenChapters.add(currentChapter);
+    } else {
+        hiddenChapters.delete(currentChapter);
+    }
+
+    refreshAllState();
 }
 
 function activateChunk(chunkImages) {
@@ -66,6 +233,10 @@ function waitForChunk(chunkImages) {
     });
 }
 
+function getChunkImages(chunkNumber) {
+    return Array.from(images).filter((img) => Number(img.dataset.chunk) === chunkNumber);
+}
+
 async function initializeImageLoading() {
     if (images.length === 0) {
         imagesLoaded = true;
@@ -94,7 +265,7 @@ function updateProgress() {
     const docHeight = document.documentElement.scrollHeight - window.innerHeight;
     const scrollPercent = docHeight ? (scrollTop / docHeight) * 100 : 0;
     progressBar.style.width = scrollPercent + '%';
-    
+
     // Find current page based on scroll position
     let currentPage = 1;
     images.forEach((img, index) => {
@@ -104,25 +275,23 @@ function updateProgress() {
         }
     });
     currentPageSpan.textContent = currentPage;
-    
+
     // Hide/show toolbar based on scroll direction and distance
     const scrollDelta = scrollTop - lastScrollY;
     const distanceFromLastToggle = Math.abs(scrollTop - lastNavToggleScrollY);
-    
+
     if (scrollDelta > 0 && scrollTop > 400 && distanceFromLastToggle > 100) {
-        // Scrolling down and past threshold
         topNav.classList.add('hidden');
         lastNavToggleScrollY = scrollTop;
     } else if (scrollDelta < 0 && distanceFromLastToggle > 100) {
-        // Scrolling up
         topNav.classList.remove('hidden');
         lastNavToggleScrollY = scrollTop;
     }
-    
+
     lastScrollY = scrollTop;
-    
-    // Check if at bottom of page
-    if (imagesLoaded && nextChapterFile && scrollTop > docHeight - 300) {
+
+    const nextTarget = currentChapter ? getVisibleNeighbor(currentChapter, 'next') : null;
+    if (imagesLoaded && nextTarget && scrollTop > docHeight - 300) {
         isAtBottomOfPage = true;
     } else {
         isAtBottomOfPage = false;
@@ -131,140 +300,160 @@ function updateProgress() {
 
 // Update horizontal swipe indicator position
 function updateSwipeIndicator(currentX) {
-    if (!isHorizontalSwiping || !nextChapterFile) return;
-    
+    const nextTarget = currentChapter ? getVisibleNeighbor(currentChapter, 'next') : null;
+    if (!isHorizontalSwiping || !nextTarget) return;
+
     const screenWidth = window.innerWidth;
     const distanceFromRight = screenWidth - currentX;
     const minDragDistance = screenWidth * 0.25;
     const middleOfScreen = screenWidth * 0.5;
-    
-    // Don't show indicator until dragged at least 25%
+
     if (distanceFromRight < minDragDistance) {
         swipeIndicator.classList.remove('active');
         swipeProgressLine.classList.remove('active');
         return;
     }
-    
+
     swipeIndicator.classList.add('active');
     swipeProgressLine.classList.add('active');
-    
-    // Position arrow based on distance pulled
+
     const arrowDistance = (screenWidth - currentX) * 0.5;
     swipeIndicator.style.right = arrowDistance + 'px';
-    
-    // Color and scale based on threshold
+
     const arrow = swipeIndicator.querySelector('.swipe-arrow');
     if (distanceFromRight > middleOfScreen) {
-        // Haven't reached middle yet - purple/ready state
         arrow.style.background = 'rgba(168, 85, 247, 0.3)';
         arrow.style.borderColor = 'rgba(168, 85, 247, 0.6)';
         arrow.style.color = 'rgba(168, 85, 247, 0.8)';
         arrow.style.filter = 'drop-shadow(0 0 8px rgba(168, 85, 247, 0.3))';
         arrow.style.boxShadow = 'none';
     } else {
-        // Reached middle - green/caution state
         arrow.style.background = 'rgba(34, 197, 94, 0.4)';
         arrow.style.borderColor = 'rgba(34, 197, 94, 0.8)';
         arrow.style.color = '#22c55e';
         arrow.style.filter = 'drop-shadow(0 0 12px rgba(34, 197, 94, 0.8))';
         arrow.style.boxShadow = 'inset 0 0 12px rgba(34, 197, 94, 0.3)';
     }
-    
-    // Update progress line width
+
     const lineWidth = Math.min(screenWidth * 0.5, (screenWidth - currentX) * 0.5);
     swipeProgressLine.style.width = lineWidth + 'px';
 }
 
 // Handle horizontal swipe release
 function handleSwipeRelease(currentX) {
-    if (!isHorizontalSwiping || !nextChapterFile) return;
-    
+    const nextTarget = currentChapter ? getVisibleNeighbor(currentChapter, 'next') : null;
+    if (!isHorizontalSwiping || !nextTarget) return;
+
     const screenWidth = window.innerWidth;
     const distanceFromRight = screenWidth - currentX;
     const minDragDistance = screenWidth * 0.25;
     const middleOfScreen = screenWidth * 0.5;
-    
-    // Clear indicator
+
     swipeIndicator.classList.remove('active');
     swipeProgressLine.classList.remove('active');
     isHorizontalSwiping = false;
-    
-    // Navigate if released while purple (between 25% and 50% drag)
+
     if (distanceFromRight >= minDragDistance && distanceFromRight > middleOfScreen) {
-        // Use same navigation method as scroll-to-bottom for consistency
         setTimeout(() => {
-            window.location.href = nextChapterFile;
+            window.location.href = nextTarget.file;
         }, 0);
     }
 }
 
 // Update vertical swipe indicator position
 function updateVerticalSwipeIndicator(currentY) {
-    if (!isVerticalSwiping || !nextChapterFile || !isAtBottomOfPage) return;
-    
+    const nextTarget = currentChapter ? getVisibleNeighbor(currentChapter, 'next') : null;
+    if (!isVerticalSwiping || !nextTarget || !isAtBottomOfPage) return;
+
     const screenHeight = window.innerHeight;
     const distanceFromBottom = screenHeight - currentY;
     const minDragDistance = screenHeight * 0.15;
     const middleOfScreen = screenHeight * 0.30;
-    
-    // Don't show indicator until dragged at least 15%
+
     if (distanceFromBottom < minDragDistance) {
         verticalSwipeIndicator.classList.remove('active');
         verticalSwipeProgressLine.classList.remove('active');
         return;
     }
-    
+
     verticalSwipeIndicator.classList.add('active');
     verticalSwipeProgressLine.classList.add('active');
-    
-    // Position arrow based on distance pulled
+
     const arrowDistance = (screenHeight - currentY) * 0.30;
     verticalSwipeIndicator.style.bottom = arrowDistance + 'px';
-    
-    // Color and scale based on threshold
+
     const arrow = verticalSwipeIndicator.querySelector('.vertical-swipe-arrow');
     if (distanceFromBottom > middleOfScreen) {
-        // Haven't reached middle yet - purple/ready state
         arrow.style.background = 'rgba(168, 85, 247, 0.3)';
         arrow.style.borderColor = 'rgba(168, 85, 247, 0.6)';
         arrow.style.color = 'rgba(168, 85, 247, 0.8)';
         arrow.style.filter = 'drop-shadow(0 0 8px rgba(168, 85, 247, 0.3))';
         arrow.style.boxShadow = 'none';
     } else {
-        // Reached middle - green/caution state
         arrow.style.background = 'rgba(34, 197, 94, 0.4)';
         arrow.style.borderColor = 'rgba(34, 197, 94, 0.8)';
         arrow.style.color = '#22c55e';
         arrow.style.filter = 'drop-shadow(0 0 12px rgba(34, 197, 94, 0.8))';
         arrow.style.boxShadow = 'inset 0 0 12px rgba(34, 197, 94, 0.3)';
     }
-    
-    // Update progress line height
+
     const lineHeight = Math.min(screenHeight * 0.5, (screenHeight - currentY) * 0.5);
     verticalSwipeProgressLine.style.height = lineHeight + 'px';
 }
 
 // Handle vertical swipe release
 function handleVerticalSwipeRelease(currentY) {
-    if (!isVerticalSwiping || !nextChapterFile || !isAtBottomOfPage) return;
-    
+    const nextTarget = currentChapter ? getVisibleNeighbor(currentChapter, 'next') : null;
+    if (!isVerticalSwiping || !nextTarget || !isAtBottomOfPage) return;
+
     const screenHeight = window.innerHeight;
     const distanceFromBottom = screenHeight - currentY;
     const minDragDistance = screenHeight * 0.15;
     const middleOfScreen = screenHeight * 0.30;
-    
-    // Clear indicator
+
     verticalSwipeIndicator.classList.remove('active');
     verticalSwipeProgressLine.classList.remove('active');
     isVerticalSwiping = false;
-    
-    // Navigate if released while purple (between 15% and 30% drag)
+
     if (distanceFromBottom >= minDragDistance && distanceFromBottom > middleOfScreen) {
         setTimeout(() => {
-            window.location.href = nextChapterFile;
+            window.location.href = nextTarget.file;
         }, 0);
     }
 }
+
+navLinks.forEach((element) => {
+    element.addEventListener('click', (event) => {
+        if (element.getAttribute('aria-disabled') === 'true') {
+            event.preventDefault();
+        }
+    });
+});
+
+navLinks.forEach((element) => {
+    setNavElementState(element, null);
+});
+
+editModeButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        editModeEnabled = !editModeEnabled;
+        updateEditModeUi();
+        updateHideChapterButtons();
+    });
+});
+
+hideChapterButtons.forEach((button) => {
+    button.addEventListener('click', async () => {
+        try {
+            button.disabled = true;
+            await toggleCurrentChapterHidden();
+        } catch (error) {
+            console.error(error);
+        } finally {
+            button.disabled = false;
+        }
+    });
+});
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight' || e.key === ' ') {
@@ -280,50 +469,44 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('touchstart', (e) => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
-    
+
     const screenWidth = window.innerWidth;
     const screenHeight = window.innerHeight;
     const distanceFromRight = screenWidth - touchStartX;
     const distanceFromBottom = screenHeight - touchStartY;
-    
-    // Horizontal swipe: only start if touch begins in rightmost 12%
-    if (distanceFromRight < screenWidth * 0.12 && nextChapterFile) {
+
+    if (distanceFromRight < screenWidth * 0.12 && currentChapter && getVisibleNeighbor(currentChapter, 'next')) {
         isHorizontalSwiping = true;
     }
-    
-    // Vertical swipe: only start if at bottom of page and touch is in bottom 30%
-    if (distanceFromBottom < screenHeight * 0.30 && isAtBottomOfPage && nextChapterFile) {
+
+    if (distanceFromBottom < screenHeight * 0.30 && isAtBottomOfPage && currentChapter && getVisibleNeighbor(currentChapter, 'next')) {
         isVerticalSwiping = true;
     }
 }, false);
 
 document.addEventListener('touchmove', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+
     if (isHorizontalSwiping) {
-        const currentX = e.changedTouches[0].screenX;
-        updateSwipeIndicator(currentX);
+        updateSwipeIndicator(touchEndX);
     }
     if (isVerticalSwiping) {
-        const currentY = e.changedTouches[0].screenY;
-        updateVerticalSwipeIndicator(currentY);
+        updateVerticalSwipeIndicator(touchEndY);
     }
 }, false);
 
 document.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+
     if (isHorizontalSwiping) {
-        const currentX = e.changedTouches[0].screenX;
-        handleSwipeRelease(currentX);
+        handleSwipeRelease(touchEndX);
     }
     if (isVerticalSwiping) {
-        const currentY = e.changedTouches[0].screenY;
-        handleVerticalSwipeRelease(currentY);
+        handleVerticalSwipeRelease(touchEndY);
     }
 }, false);
 
-window.addEventListener('scroll', updateProgress);
-window.addEventListener('resize', updateProgress);
-
-// Initialize image loading tracking
-initializeImageLoading();
-
-// Initial update
-updateProgress();
+void loadHiddenChapters();
+void initializeImageLoading();
