@@ -166,6 +166,7 @@ def generate_chapter_html(
     first_chunk_end = (len(pages) + 2) // 3
     second_chunk_end = ((len(pages) * 2) + 2) // 3
     for index, page in enumerate(pages):
+        page_number = index + 1
         encoded_page = quote(page, safe='')
         image_path = f"../{encoded_chapter_folder}/{encoded_page}"
         if index < first_chunk_end:
@@ -176,15 +177,27 @@ def generate_chapter_html(
             chunk = 3
 
         if chunk == 1:
-            images_html += (
-                f'            <img src="{image_path}" alt="Page" class="manga-page" '
-                f'data-chunk="{chunk}">\n'
+            img_tag = (
+                f'<img src="{image_path}" alt="Page" class="manga-page" '
+                f'data-chunk="{chunk}" data-page="{page_number}">'
             )
         else:
-            images_html += (
-                f'            <img data-src="{image_path}" alt="Page" class="manga-page deferred-page" '
-                f'data-chunk="{chunk}">\n'
+            img_tag = (
+                f'<img data-src="{image_path}" alt="Page" class="manga-page deferred-page" '
+                f'data-chunk="{chunk}" data-page="{page_number}">'
             )
+
+        select_btn = (
+            f'<button class="page-select-btn edit-only" type="button" '
+            f'data-action="toggle-last-page" data-page="{page_number}">Set as Last Page</button>'
+        )
+
+        images_html += (
+            f'            <div class="page-container" data-page="{page_number}">\n'
+            f'                {img_tag}\n'
+            f'                {select_btn}\n'
+            f'            </div>\n'
+        )
     
     page_count = len(pages)
     next_chapter_file_json = json.dumps(next_chapter_file) if next_chapter_file else "null"
@@ -242,6 +255,7 @@ def generate_chapter_html(
         window.PREV_CHAPTER_FILE = {prev_chapter_file_json};
         window.NEXT_CHAPTER_FILE = {next_chapter_file_json};
         window.HIDE_CHAPTER_ENDPOINT = "/cgi-bin/hide_chapter.py";
+        window.LAST_PAGE_ENDPOINT = "/cgi-bin/last_page.py";
     </script>
     <script src="assets/script-chapter.js"></script>
 </body>

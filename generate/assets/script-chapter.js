@@ -8,6 +8,7 @@ const pageCount = window.PAGE_COUNT || 0;
 const chapterOrder = Array.isArray(window.CHAPTERS) ? window.CHAPTERS : [];
 const currentChapter = window.CURRENT_CHAPTER || null;
 const hideChapterEndpoint = window.HIDE_CHAPTER_ENDPOINT || '/cgi-bin/hide_chapter.py';
+const lastPageEndpoint = window.LAST_PAGE_ENDPOINT || '/cgi-bin/last_page.py';
 const swipeIndicator = document.getElementById('swipeIndicator');
 const swipeProgressLine = document.getElementById('swipeProgressLine');
 const verticalSwipeIndicator = document.getElementById('verticalSwipeIndicator');
@@ -15,6 +16,7 @@ const verticalSwipeProgressLine = document.getElementById('verticalSwipeProgress
 const navLinks = Array.from(document.querySelectorAll('[data-nav]'));
 const editModeButtons = Array.from(document.querySelectorAll('[data-action="edit-mode-toggle"]'));
 const hideChapterButtons = Array.from(document.querySelectorAll('[data-action="hide-chapter-toggle"]'));
+const pageSelectButtons = Array.from(document.querySelectorAll('[data-action="toggle-last-page"]'));
 
 let lastScrollY = 0;
 let lastNavToggleScrollY = 0;
@@ -22,6 +24,7 @@ let imagesLoaded = false;
 let isAtBottomOfPage = false;
 let hiddenChapters = new Set();
 let editModeEnabled = false;
+let lastPageValue = null;
 
 // Touch gesture tracking
 let touchStartX = 0;
@@ -132,6 +135,78 @@ function refreshAllState() {
     updateNavigationLinks();
     updateEditModeUi();
     updateHideChapterButtons();
+    updatePageVisibility();
+}
+
+function updatePageVisibility() {
+    images.forEach((img) => {
+        const pageNumber = Number(img.dataset.page);
+        const container = img.closest('.page-container');
+        if (!container) {
+            return;
+        }
+        const isBeyondLastPage = lastPageValue !== null && pageNumber > lastPageValue;
+        container.classList.toggle('beyond-last-page', isBeyondLastPage);
+    });
+
+    pageSelectButtons.forEach((button) => {
+        const pageNumber = Number(button.dataset.page);
+        const isCurrentLastPage = lastPageValue === pageNumber;
+        button.classList.toggle('is-last-page', isCurrentLastPage);
+        button.textContent = isCurrentLastPage ? 'Unset Last Page' : 'Set as Last Page';
+    });
+}
+
+async function loadLastPage() {
+    if (!currentChapter) {
+        return;
+    }
+
+    try {
+        const params = new URLSearchParams({ chapter: currentChapter });
+        const response = await fetch(`${lastPageEndpoint}?${params.toString()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            throw new Error(`Failed to load last page: ${response.status}`);
+        }
+
+        const data = await response.json();
+        lastPageValue = typeof data.last_page === 'number' ? data.last_page : null;
+    } catch (error) {
+        console.error(error);
+        lastPageValue = null;
+    } finally {
+        updatePageVisibility();
+    }
+}
+
+async function toggleLastPage(pageNumber) {
+    if (!currentChapter) {
+        return;
+    }
+
+    const form = new URLSearchParams();
+    form.set('chapter', currentChapter);
+    form.set('page', String(pageNumber));
+
+    const response = await fetch(lastPageEndpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        },
+        body: form.toString(),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to update last page: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.ok) {
+        throw new Error('Failed to update last page');
+    }
+
+    lastPageValue = typeof data.last_page === 'number' ? data.last_page : null;
+    updatePageVisibility();
 }
 
 function getChapterEndpointForm(hidden) {
@@ -455,6 +530,20 @@ hideChapterButtons.forEach((button) => {
     });
 });
 
+pageSelectButtons.forEach((button) => {
+    button.addEventListener('click', async () => {
+        const pageNumber = Number(button.dataset.page);
+        try {
+            button.disabled = true;
+            await toggleLastPage(pageNumber);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            button.disabled = false;
+        }
+    });
+});
+
 document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight' || e.key === ' ') {
         e.preventDefault();
@@ -509,4 +598,5 @@ document.addEventListener('touchend', (e) => {
 }, false);
 
 void loadHiddenChapters();
+void loadLastPage();
 void initializeImageLoading();
