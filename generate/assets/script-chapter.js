@@ -13,6 +13,7 @@ const swipeIndicator = document.getElementById('swipeIndicator');
 const swipeProgressLine = document.getElementById('swipeProgressLine');
 const verticalSwipeIndicator = document.getElementById('verticalSwipeIndicator');
 const verticalSwipeProgressLine = document.getElementById('verticalSwipeProgressLine');
+const nextChapterDropzone = document.getElementById('nextChapterDropzone');
 const navLinks = Array.from(document.querySelectorAll('[data-nav]'));
 const editModeButtons = Array.from(document.querySelectorAll('[data-action="edit-mode-toggle"]'));
 const hideChapterButtons = Array.from(document.querySelectorAll('[data-action="hide-chapter-toggle"]'));
@@ -21,7 +22,6 @@ const pageSelectButtons = Array.from(document.querySelectorAll('[data-action="to
 let lastScrollY = 0;
 let lastNavToggleScrollY = 0;
 let imagesLoaded = false;
-let isAtBottomOfPage = false;
 let hiddenChapters = new Set();
 let editModeEnabled = false;
 let lastPageValue = null;
@@ -364,13 +364,6 @@ function updateProgress() {
     }
 
     lastScrollY = scrollTop;
-
-    const nextTarget = currentChapter ? getVisibleNeighbor(currentChapter, 'next') : null;
-    if (imagesLoaded && nextTarget && scrollTop > docHeight - 300) {
-        isAtBottomOfPage = true;
-    } else {
-        isAtBottomOfPage = false;
-    }
 }
 
 // Update horizontal swipe indicator position
@@ -438,7 +431,7 @@ function handleSwipeRelease(currentX) {
 // Update vertical swipe indicator position
 function updateVerticalSwipeIndicator(currentY) {
     const nextTarget = currentChapter ? getVisibleNeighbor(currentChapter, 'next') : null;
-    if (!isVerticalSwiping || !nextTarget || !isAtBottomOfPage) return;
+    if (!isVerticalSwiping || !nextTarget) return;
 
     const screenHeight = window.innerHeight;
     const distanceFromBottom = screenHeight - currentY;
@@ -479,7 +472,7 @@ function updateVerticalSwipeIndicator(currentY) {
 // Handle vertical swipe release
 function handleVerticalSwipeRelease(currentY) {
     const nextTarget = currentChapter ? getVisibleNeighbor(currentChapter, 'next') : null;
-    if (!isVerticalSwiping || !nextTarget || !isAtBottomOfPage) return;
+    if (!isVerticalSwiping || !nextTarget) return;
 
     const screenHeight = window.innerHeight;
     const distanceFromBottom = screenHeight - currentY;
@@ -560,16 +553,19 @@ document.addEventListener('touchstart', (e) => {
     touchStartY = e.changedTouches[0].screenY;
 
     const screenWidth = window.innerWidth;
-    const screenHeight = window.innerHeight;
     const distanceFromRight = screenWidth - touchStartX;
-    const distanceFromBottom = screenHeight - touchStartY;
 
     if (distanceFromRight < screenWidth * 0.12 && currentChapter && getVisibleNeighbor(currentChapter, 'next')) {
         isHorizontalSwiping = true;
     }
 
-    if (distanceFromBottom < screenHeight * 0.30 && isAtBottomOfPage && currentChapter && getVisibleNeighbor(currentChapter, 'next')) {
-        isVerticalSwiping = true;
+    if (nextChapterDropzone && currentChapter && getVisibleNeighbor(currentChapter, 'next')) {
+        const dropzoneRect = nextChapterDropzone.getBoundingClientRect();
+        const touchStartsInDropzone = touchStartY >= dropzoneRect.top && touchStartY <= dropzoneRect.bottom
+            && touchStartX >= dropzoneRect.left && touchStartX <= dropzoneRect.right;
+        if (touchStartsInDropzone) {
+            isVerticalSwiping = true;
+        }
     }
 }, false);
 
@@ -597,6 +593,10 @@ document.addEventListener('touchend', (e) => {
     }
 }, false);
 
+window.addEventListener('scroll', updateProgress);
+window.addEventListener('resize', updateProgress);
+
 void loadHiddenChapters();
 void loadLastPage();
 void initializeImageLoading();
+updateProgress();

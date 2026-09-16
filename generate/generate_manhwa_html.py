@@ -199,6 +199,14 @@ def generate_chapter_html(
             f'            </div>\n'
         )
     
+    dropzone_html = (
+        '        <div class="next-chapter-dropzone" id="nextChapterDropzone">\n'
+        '            <div class="next-chapter-dropzone-arrow">&#8595;</div>\n'
+        '        </div>\n'
+        if next_chapter_file else
+        ''
+    )
+
     page_count = len(pages)
     next_chapter_file_json = json.dumps(next_chapter_file) if next_chapter_file else "null"
     prev_chapter_file_json = json.dumps(prev_chapter_file) if prev_chapter_file else "null"
@@ -238,7 +246,7 @@ def generate_chapter_html(
     </div>
     
     <div class="container" id="container">
-{images_html}    </div>
+{images_html}{dropzone_html}    </div>
     
     <div class="bottom-nav">
         {prev_btn}
