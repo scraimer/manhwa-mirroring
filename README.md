@@ -43,8 +43,12 @@ Edit the file
 "/home/shalom/Dropbox/backups/quests, hobbies and entertainment/manhwa/index.html"
 to add a link to the newly created folder, so it's easy to find.
 
-## Wishlist:
+## Notes
 
-* Mark end of chapter while reading
-* Mark chapter as duplicate and decide which one stays
+### After marking chapter as hidden, you can move them by using
 
+```shell
+sqlite3 /var/lib/manhwa/state.sqlite3 -json "select * from chapter_limits WHERE hidden=1" | jq .[].chapter | xargs -I @@ mv @@ duplicates/ -v
+```
+
+And then re-run the `generate_manhwa_html.py` script to update the HTML with the changes.
