@@ -121,6 +121,10 @@ function updateEditModeUi() {
     hideChapterButtons.forEach((button) => {
         button.style.display = editModeEnabled ? 'inline-flex' : '';
     });
+
+    document.querySelectorAll('.nav-btn[data-nav], .toc-btn').forEach((button) => {
+        button.style.display = editModeEnabled ? 'none' : '';
+    });
 }
 
 function updateHideChapterButtons() {

@@ -1,8 +1,4 @@
-## Purpose
-
-Defines how the chapter reader page manages toolbar visibility while scrolling and how a reader advances to the next chapter via a touch-drag gesture, so long-press/scroll reading stays uncluttered while chapter-to-chapter navigation remains discoverable and reliable.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Toolbar auto-hides while scrolling down
 The top toolbar (containing the TOC link, PREV/NEXT buttons, chapter title, and page counter) SHALL hide when the reader scrolls down past an initial threshold, and SHALL reappear when the reader scrolls up, on every chapter page regardless of Edit Mode state or whether a last page has been marked. When Edit Mode is enabled, the TOC button together with the Prev and Next chapter navigation buttons SHALL be hidden from the visible reader UI until Edit Mode is exited.

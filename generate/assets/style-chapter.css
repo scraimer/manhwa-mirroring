@@ -104,6 +104,11 @@ body {
     display: inline-flex;
 }
 
+.edit-mode .nav-btn[data-nav],
+.edit-mode .toc-btn {
+    display: none !important;
+}
+
 .current-chapter-hidden .chapter-title::after {
     content: " (hidden)";
     color: #f59e0b;
