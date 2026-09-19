@@ -115,6 +115,7 @@ def generate_toc_html(
     </div>
     <script>
         window.CHAPTERS = {chapter_payload};
+        window.STORY_NAME = {json.dumps(story_name)};
         window.HIDE_CHAPTER_ENDPOINT = "/cgi-bin/hide_chapter.py";
     </script>
     <script src="assets/script-toc.js"></script>
@@ -259,6 +260,7 @@ def generate_chapter_html(
     <script>
         window.PAGE_COUNT = {page_count};
         window.CHAPTERS = {chapter_payload};
+        window.STORY_NAME = {json.dumps(story_name)};
         window.CURRENT_CHAPTER = {json.dumps(chapter_folder)};
         window.PREV_CHAPTER_FILE = {prev_chapter_file_json};
         window.NEXT_CHAPTER_FILE = {next_chapter_file_json};

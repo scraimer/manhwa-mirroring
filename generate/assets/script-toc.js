@@ -1,4 +1,5 @@
 const tocChapterLinks = Array.from(document.querySelectorAll('.chapter-link[data-chapter]'));
+const tocStoryName = window.STORY_NAME || '';
 const tocHideEndpoint = window.HIDE_CHAPTER_ENDPOINT || '/cgi-bin/hide_chapter.py';
 
 function updateTocHiddenState(hiddenChapters) {
@@ -10,7 +11,8 @@ function updateTocHiddenState(hiddenChapters) {
 
 async function loadTocHiddenState() {
     try {
-        const response = await fetch(tocHideEndpoint, { cache: 'no-store' });
+        const params = new URLSearchParams({ story: tocStoryName });
+        const response = await fetch(`${tocHideEndpoint}?${params.toString()}`, { cache: 'no-store' });
         if (!response.ok) {
             throw new Error(`Failed to load hidden chapters: ${response.status}`);
         }

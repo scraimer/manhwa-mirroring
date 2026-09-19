@@ -6,6 +6,7 @@ const bottomNav = document.querySelector('.bottom-nav');
 const images = document.querySelectorAll('.manga-page');
 const pageCount = window.PAGE_COUNT || 0;
 const chapterOrder = Array.isArray(window.CHAPTERS) ? window.CHAPTERS : [];
+const currentStory = window.STORY_NAME || '';
 const currentChapter = window.CURRENT_CHAPTER || null;
 const hideChapterEndpoint = window.HIDE_CHAPTER_ENDPOINT || '/cgi-bin/hide_chapter.py';
 const lastPageEndpoint = window.LAST_PAGE_ENDPOINT || '/cgi-bin/last_page.py';
@@ -163,7 +164,7 @@ async function loadLastPage() {
     }
 
     try {
-        const params = new URLSearchParams({ chapter: currentChapter });
+        const params = new URLSearchParams({ story: currentStory, chapter: currentChapter });
         const response = await fetch(`${lastPageEndpoint}?${params.toString()}`, { cache: 'no-store' });
         if (!response.ok) {
             throw new Error(`Failed to load last page: ${response.status}`);
@@ -185,6 +186,7 @@ async function toggleLastPage(pageNumber) {
     }
 
     const form = new URLSearchParams();
+    form.set('story', currentStory);
     form.set('chapter', currentChapter);
     form.set('page', String(pageNumber));
 
@@ -211,6 +213,7 @@ async function toggleLastPage(pageNumber) {
 
 function getChapterEndpointForm(hidden) {
     const form = new URLSearchParams();
+    form.set('story', currentStory || '');
     form.set('chapter', currentChapter || '');
     form.set('hidden', hidden ? '1' : '0');
     return form;
@@ -218,7 +221,8 @@ function getChapterEndpointForm(hidden) {
 
 async function loadHiddenChapters() {
     try {
-        const response = await fetch(hideChapterEndpoint, { cache: 'no-store' });
+        const params = new URLSearchParams({ story: currentStory });
+        const response = await fetch(`${hideChapterEndpoint}?${params.toString()}`, { cache: 'no-store' });
         if (!response.ok) {
             throw new Error(`Failed to load hidden chapters: ${response.status}`);
         }

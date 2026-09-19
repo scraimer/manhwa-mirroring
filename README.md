@@ -1,5 +1,13 @@
 # Downloading Manwha
 
+## Step 0: Install the server
+
+```shell
+cd server
+sudo ./install.sh
+sudo systemctl restart manhwa-lighttpd.service
+```
+
 ## Step 1: Download
 
 ```shell
@@ -42,6 +50,11 @@ python3 /home/shalom/workspace/manhwa/manhwa-mirroring/generate/generate_manhwa_
 Edit the file 
 "/home/shalom/Dropbox/backups/quests, hobbies and entertainment/manhwa/index.html"
 to add a link to the newly created folder, so it's easy to find.
+
+## Wishlist
+
+* "Edit Mode" should hide Next/Prev buttons while active, to make more room for the editing buttons
+* A script for removing the pages after the last page entirely
 
 ## Notes
 
