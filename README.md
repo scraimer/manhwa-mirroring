@@ -16,7 +16,13 @@ NAME="For My Derelict Favorite"
 
 cd /home/shalom/workspace/manhwa/download/v3/comix-downloader
 source venv/bin/activate
-python main.py download "$SRC_URL" -c "1-10"
+
+# using GUI, which allows to select specific scanlators:
+# (paste the SRC_URL into the GUI)
+./venv/bin/python gui/main.py --cpu
+
+# Using CLI
+./venv/bin/python main.py download "$SRC_URL" -c "1-10"
 ```
 
 ## Step 2: Check for missing
