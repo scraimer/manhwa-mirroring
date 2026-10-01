@@ -27,6 +27,7 @@ def ensure_schema(conn):
             "story TEXT NOT NULL, "
             "chapter TEXT NOT NULL, "
             "last_page INTEGER, "
+            "first_page INTEGER, "
             "hidden INTEGER NOT NULL DEFAULT 0, "
             "hidden_changed_at TEXT, "
             "PRIMARY KEY(story, chapter))"
@@ -44,6 +45,7 @@ def ensure_schema(conn):
             "story TEXT NOT NULL, "
             "chapter TEXT NOT NULL, "
             "last_page INTEGER, "
+            "first_page INTEGER, "
             "hidden INTEGER NOT NULL DEFAULT 0, "
             "hidden_changed_at TEXT, "
             "PRIMARY KEY(story, chapter))"
@@ -54,6 +56,8 @@ def ensure_schema(conn):
         conn.execute(
             "ALTER TABLE chapter_limits ADD COLUMN hidden_changed_at TEXT"
         )
+    if "first_page" not in columns:
+        conn.execute("ALTER TABLE chapter_limits ADD COLUMN first_page INTEGER")
 
 
 def get_hidden_chapters(story):

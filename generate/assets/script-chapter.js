@@ -19,6 +19,7 @@ const navLinks = Array.from(document.querySelectorAll('[data-nav]'));
 const editModeButtons = Array.from(document.querySelectorAll('[data-action="edit-mode-toggle"]'));
 const hideChapterButtons = Array.from(document.querySelectorAll('[data-action="hide-chapter-toggle"]'));
 const pageSelectButtons = Array.from(document.querySelectorAll('[data-action="toggle-last-page"]'));
+const firstPageButtons = Array.from(document.querySelectorAll('[data-action="toggle-first-page"]'));
 
 let lastScrollY = 0;
 let lastNavToggleScrollY = 0;
@@ -26,6 +27,7 @@ let imagesLoaded = false;
 let hiddenChapters = new Set();
 let editModeEnabled = false;
 let lastPageValue = null;
+let firstPageValue = null;
 
 // Touch gesture tracking
 let touchStartX = 0;
@@ -151,7 +153,9 @@ function updatePageVisibility() {
             return;
         }
         const isBeyondLastPage = lastPageValue !== null && pageNumber > lastPageValue;
+        const isBeforeFirstPage = firstPageValue !== null && pageNumber < firstPageValue;
         container.classList.toggle('beyond-last-page', isBeyondLastPage);
+        container.classList.toggle('before-first-page', isBeforeFirstPage);
     });
 
     pageSelectButtons.forEach((button) => {
@@ -159,6 +163,13 @@ function updatePageVisibility() {
         const isCurrentLastPage = lastPageValue === pageNumber;
         button.classList.toggle('is-last-page', isCurrentLastPage);
         button.textContent = isCurrentLastPage ? 'Unset Last Page' : 'Set as Last Page';
+    });
+
+    firstPageButtons.forEach((button) => {
+        const pageNumber = Number(button.dataset.page);
+        const isCurrentFirstPage = firstPageValue === pageNumber;
+        button.classList.toggle('is-first-page', isCurrentFirstPage);
+        button.textContent = isCurrentFirstPage ? 'Unset First Page' : 'Set as First Page';
     });
 }
 
@@ -176,9 +187,11 @@ async function loadLastPage() {
 
         const data = await response.json();
         lastPageValue = typeof data.last_page === 'number' ? data.last_page : null;
+        firstPageValue = typeof data.first_page === 'number' ? data.first_page : null;
     } catch (error) {
         console.error(error);
         lastPageValue = null;
+        firstPageValue = null;
     } finally {
         updatePageVisibility();
     }
@@ -212,6 +225,38 @@ async function toggleLastPage(pageNumber) {
     }
 
     lastPageValue = typeof data.last_page === 'number' ? data.last_page : null;
+    updatePageVisibility();
+}
+
+async function toggleFirstPage(pageNumber) {
+    if (!currentChapter) {
+        return;
+    }
+
+    const form = new URLSearchParams();
+    form.set('story', currentStory);
+    form.set('chapter', currentChapter);
+    form.set('page', String(pageNumber));
+    form.set('marker', 'first_page');
+
+    const response = await fetch(lastPageEndpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        },
+        body: form.toString(),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to update first page: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.ok) {
+        throw new Error('Failed to update first page');
+    }
+
+    firstPageValue = typeof data.first_page === 'number' ? data.first_page : null;
     updatePageVisibility();
 }
 
@@ -537,6 +582,20 @@ pageSelectButtons.forEach((button) => {
         try {
             button.disabled = true;
             await toggleLastPage(pageNumber);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            button.disabled = false;
+        }
+    });
+});
+
+firstPageButtons.forEach((button) => {
+    button.addEventListener('click', async () => {
+        const pageNumber = Number(button.dataset.page);
+        try {
+            button.disabled = true;
+            await toggleFirstPage(pageNumber);
         } catch (error) {
             console.error(error);
         } finally {

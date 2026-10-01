@@ -192,11 +192,16 @@ def generate_chapter_html(
             f'<button class="page-select-btn edit-only" type="button" '
             f'data-action="toggle-last-page" data-page="{page_number}">Set as Last Page</button>'
         )
+        first_page_btn = (
+            f'<button class="page-select-btn first-page-select-btn edit-only" type="button" '
+            f'data-action="toggle-first-page" data-page="{page_number}">Set as First Page</button>'
+        )
 
         images_html += (
             f'            <div class="page-container" data-page="{page_number}">\n'
             f'                {img_tag}\n'
             f'                {select_btn}\n'
+            f'                {first_page_btn}\n'
             f'            </div>\n'
         )
     
